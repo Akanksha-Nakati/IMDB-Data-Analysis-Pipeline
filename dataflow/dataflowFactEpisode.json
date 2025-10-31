@@ -1,0 +1,119 @@
+{
+	"name": "dataflowFactEpisode",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable_title_episode",
+						"type": "DatasetReference"
+					},
+					"name": "source"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeFactEpisode",
+						"type": "DatasetReference"
+					},
+					"name": "sink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "surrogateKey1"
+				},
+				{
+					"name": "surrogateKey2"
+				},
+				{
+					"name": "surrogateKey3"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "select"
+				},
+				{
+					"name": "surrogateKey4"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     jobid as string (uuid())",
+				"}",
+				"source(output(",
+				"          TCONST as string,",
+				"          PARENTTCONST as string,",
+				"          SEASONNUMBER as decimal(38,0),",
+				"          EPISODENUMBER as decimal(38,0),",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> source",
+				"surrogateKey4 keyGenerate(output(rownum as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey1",
+				"surrogateKey1 keyGenerate(output(date as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey2",
+				"surrogateKey2 keyGenerate(output(movie as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey3",
+				"surrogateKey3 derive(DI_LOAD_DT = $jobid,",
+				"          DI_LOAD_DATE = currentTimestamp()) ~> derivedColumn1",
+				"derivedColumn1 select(mapColumn(",
+				"          TCONST,",
+				"          PARENTTCONST,",
+				"          SEASONNUMBER,",
+				"          EPISODENUMBER,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE,",
+				"          BRIDGE = bridge,",
+				"          ROWNUM = rownum,",
+				"          DATE = date,",
+				"          MOVIE = movie,",
+				"          DI_LOAD_DT",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> select",
+				"source keyGenerate(output(bridge as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey4",
+				"select sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          FACT_EPISODE_SK as decimal(10,0),",
+				"          MOVIE_SK as decimal(10,0),",
+				"          BRIDGE_DATE_SK as decimal(10,0),",
+				"          DATE_SK as decimal(10,0),",
+				"          EPISODENUMBER as decimal(38,0),",
+				"          SEASONNUMBER as decimal(38,0),",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          FACT_EPISODE_SK = ROWNUM,",
+				"          MOVIE_SK = MOVIE,",
+				"          BRIDGE_DATE_SK = BRIDGE,",
+				"          DATE_SK = DATE,",
+				"          EPISODENUMBER,",
+				"          SEASONNUMBER,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE",
+				"     )) ~> sink"
+			]
+		}
+	}
+}

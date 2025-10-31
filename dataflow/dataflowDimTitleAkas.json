@@ -1,0 +1,257 @@
+{
+	"name": "dataflowDimTitleAkas",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTableStageTitleAkas",
+						"type": "DatasetReference"
+					},
+					"name": "source"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTableDIMmovie",
+						"type": "DatasetReference"
+					},
+					"name": "sourceDIMMOVIE"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeBridge",
+						"type": "DatasetReference"
+					},
+					"name": "sourcebridgetitleakas"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeDimCountry",
+						"type": "DatasetReference"
+					},
+					"name": "sourcedimcountry"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable_NewDIMlanguage",
+						"type": "DatasetReference"
+					},
+					"name": "sourceDimlanguage"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTableDIMtitleakas",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "lookupdimmovietogetMOVIESK"
+				},
+				{
+					"name": "joincountry"
+				},
+				{
+					"name": "join1"
+				},
+				{
+					"name": "join2"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "surrogateKeycountry"
+				},
+				{
+					"name": "surrogateKey1"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "surrogateKeymoviesk"
+				},
+				{
+					"name": "surrogateKeybridgetitleakassk"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     jobid as string (uuid())",
+				"}",
+				"source(output(",
+				"          TITLE_AKAS_SK as decimal(38,0),",
+				"          TITLEID as string,",
+				"          ORDERING as decimal(38,0),",
+				"          TITLE as string,",
+				"          REGION as string,",
+				"          LANGUAGE as string,",
+				"          TYPES as string,",
+				"          ATTRIBUTES as string,",
+				"          ISORIGINALTITLE as decimal(38,0),",
+				"          FILENAME as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> source",
+				"source(output(",
+				"          MOVIE_SK as decimal(10,0),",
+				"          TCONST as string,",
+				"          TITLETYPE as string,",
+				"          PRIMARYTITLE as string,",
+				"          ORIGINALTITLE as string,",
+				"          ISADULT as string,",
+				"          STARTYEAR as decimal(38,0),",
+				"          ENDYEAR as decimal(38,0),",
+				"          RUNTIMEMINUTES as decimal(38,0),",
+				"          GENRES as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceDIMMOVIE",
+				"source(output(",
+				"          BRIDGE_TITLE_AKAS_SK as decimal(10,0),",
+				"          COUNTRY_CODE_SK as decimal(10,0),",
+				"          ISO_LANGUAGE_SK as decimal(10,0),",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourcebridgetitleakas",
+				"source(output(",
+				"          COUNTRY_CODE_SK as decimal(10,0),",
+				"          COUNTRY_CODE as string,",
+				"          COUNTRY_NAME as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourcedimcountry",
+				"source(output(",
+				"          ISO_LANGUAGE_SK as decimal(10,0),",
+				"          LANGUAGE_CODE as string,",
+				"          LANGUAGE_NAME as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date,",
+				"          ENDONYM as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceDimlanguage",
+				"surrogateKeybridgetitleakassk, sourceDIMMOVIE lookup(TITLEID == TCONST,",
+				"     multiple: false,",
+				"     pickup: 'first',",
+				"     asc(MOVIE_SK, true),",
+				"     broadcast: 'auto')~> lookupdimmovietogetMOVIESK",
+				"lookupdimmovietogetMOVIESK, sourcedimcountry join(REGION == COUNTRY_CODE,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joincountry",
+				"joincountry, sourceDimlanguage join(LANGUAGE == LANGUAGE_CODE,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join1",
+				"join1, sourcebridgetitleakas join(sourcedimcountry@COUNTRY_CODE_SK == sourcebridgetitleakas@COUNTRY_CODE_SK",
+				"     && sourceDimlanguage@ISO_LANGUAGE_SK == sourcebridgetitleakas@ISO_LANGUAGE_SK,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join2",
+				"derivedColumn1 select(mapColumn(",
+				"          TITLE_AKAS_SK,",
+				"          TITLEID,",
+				"          ORDERING,",
+				"          TITLE,",
+				"          REGION,",
+				"          LANGUAGE,",
+				"          TYPES,",
+				"          ATTRIBUTES,",
+				"          ISORIGINALTITLE,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE,",
+				"          rowcountry,",
+				"          rowiso,",
+				"          rowmovie,",
+				"          bridgerow",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> select1",
+				"source keyGenerate(output(rowcountry as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKeycountry",
+				"surrogateKeycountry keyGenerate(output(rowiso as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey1",
+				"join2 derive(DI_JOB_ID = $jobid,",
+				"          DI_LOAD_DATE = currentTimestamp(),",
+				"          rowiso = rowiso,",
+				"          rowcountry = rowcountry,",
+				"          bridgerow = bridgerow,",
+				"          rowmovie = rowmovie) ~> derivedColumn1",
+				"surrogateKey1 keyGenerate(output(rowmovie as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKeymoviesk",
+				"surrogateKeymoviesk keyGenerate(output(bridgerow as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKeybridgetitleakassk",
+				"select1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          TITLE_AKAS_SK as decimal(10,0),",
+				"          MOVIE_SK as decimal(10,0),",
+				"          BRIDGE_TITLE_AKAS_SK as decimal(10,0),",
+				"          COUNTRY_CODE_SK as decimal(10,0),",
+				"          ISO_LANGUAGE_SK as decimal(10,0),",
+				"          ORDERING as decimal(38,0),",
+				"          TITLE as string,",
+				"          TYPES as string,",
+				"          ATTRIBUTES as string,",
+				"          ISORIGINALTITLE as string,",
+				"          REGION as string,",
+				"          TITLEID as string,",
+				"          LANGUAGE as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          TITLE_AKAS_SK,",
+				"          MOVIE_SK = rowmovie,",
+				"          BRIDGE_TITLE_AKAS_SK = bridgerow,",
+				"          COUNTRY_CODE_SK = rowcountry,",
+				"          ISO_LANGUAGE_SK = rowiso,",
+				"          ORDERING,",
+				"          TITLE,",
+				"          TYPES,",
+				"          ATTRIBUTES,",
+				"          ISORIGINALTITLE,",
+				"          REGION,",
+				"          TITLEID,",
+				"          LANGUAGE,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}

@@ -1,0 +1,106 @@
+{
+	"name": "dataflowNameBasics",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ParquetNameBasics",
+						"type": "DatasetReference"
+					},
+					"name": "sourceNameBasics"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTableNameBasics",
+						"type": "DatasetReference"
+					},
+					"name": "sinknamebasics"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten"
+				},
+				{
+					"name": "derivedColumn"
+				},
+				{
+					"name": "sort"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     jobid as string (uuid())",
+				"}",
+				"source(output(",
+				"          nconst as string,",
+				"          primaryName as string,",
+				"          birthYear as long,",
+				"          deathYear as long,",
+				"          primaryProfession as string,",
+				"          knownForTitles as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'parquet') ~> sourceNameBasics",
+				"derivedColumn foldDown(unrollMultiple(primaryProfession,KNOWNFORTITLES),",
+				"     mapColumn(",
+				"          PRIMARYPROFESSION = primaryProfession,",
+				"          NCONST = nconst,",
+				"          KNOWNFORTITLES = derivedColumn@KNOWNFORTITLES,",
+				"          PRIMARYNAME = primaryName,",
+				"          BIRTHYEAR = birthYear,",
+				"          DEATHYEAR = deathYear,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DT",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten",
+				"sourceNameBasics derive(DI_JOB_ID = $jobid,",
+				"          DI_LOAD_DT = currentTimestamp(),",
+				"          KNOWNFORTITLES = split(knownForTitles,','),",
+				"          primaryName = primaryName,",
+				"          primaryProfession = split(primaryProfession,','),",
+				"          nconst = nconst,",
+				"          birthYear = birthYear,",
+				"          deathYear = deathYear) ~> derivedColumn",
+				"flatten sort(asc(NCONST, false)) ~> sort",
+				"sort sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          NAME_BASICS_SK as decimal(38,0),",
+				"          NCONST as string,",
+				"          PRIMARYNAME as string,",
+				"          BIRTHYEAR as decimal(38,0),",
+				"          DEATHYEAR as decimal(38,0),",
+				"          PRIMARYPROFESSION as string,",
+				"          KNOWNFORTITLES as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          NCONST,",
+				"          PRIMARYNAME,",
+				"          BIRTHYEAR,",
+				"          DEATHYEAR,",
+				"          PRIMARYPROFESSION,",
+				"          KNOWNFORTITLES,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE = DI_LOAD_DT",
+				"     )) ~> sinknamebasics"
+			]
+		}
+	}
+}

@@ -1,0 +1,96 @@
+{
+	"name": "bridgeDate",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTableDIMDate",
+						"type": "DatasetReference"
+					},
+					"name": "sourceDate"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeBridgeDate",
+						"type": "DatasetReference"
+					},
+					"name": "sink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn"
+				},
+				{
+					"name": "select"
+				},
+				{
+					"name": "surrogateKey1"
+				},
+				{
+					"name": "surrogateKey2"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     jobid as string (uuid())",
+				"}",
+				"source(output(",
+				"          DATE_SK as decimal(0,0),",
+				"          DATE as date,",
+				"          YEAR as decimal(38,0),",
+				"          MONTH as decimal(38,0),",
+				"          DAY_OF_WEEK as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceDate",
+				"surrogateKey2 derive(DI_JOB_ID = $jobid,",
+				"          DI_LOAD_DATE = currentTimestamp(),",
+				"          DATE_SK = datesk,",
+				"          Bridge_date_sk = RowNum) ~> derivedColumn",
+				"derivedColumn select(mapColumn(",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE,",
+				"          RowNum,",
+				"          datesk",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> select",
+				"sourceDate keyGenerate(output(RowNum as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey1",
+				"surrogateKey1 keyGenerate(output(datesk as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey2",
+				"select sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          BRIDGE_DATE_SK as decimal(10,0),",
+				"          DATE_SK as decimal(10,0),",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          BRIDGE_DATE_SK = RowNum,",
+				"          DATE_SK = datesk,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE",
+				"     )) ~> sink"
+			]
+		}
+	}
+}

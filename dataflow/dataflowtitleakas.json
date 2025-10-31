@@ -1,0 +1,106 @@
+{
+	"name": "dataflowtitleakas",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "TitleAkasParquet",
+						"type": "DatasetReference"
+					},
+					"name": "sourcetitleakas"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTabletitle_akas",
+						"type": "DatasetReference"
+					},
+					"name": "sinktitleAkas"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumntitleAkas"
+				},
+				{
+					"name": "selecttitleAkas"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     jobid as string (uuid())",
+				"}",
+				"source(output(",
+				"          titleId as string,",
+				"          ordering as long,",
+				"          title as string,",
+				"          region as string,",
+				"          language as string,",
+				"          types as string,",
+				"          attributes as string,",
+				"          isOriginalTitle as long,",
+				"          FileName as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'parquet') ~> sourcetitleakas",
+				"sourcetitleakas derive(DI_JOB_ID = $jobid,",
+				"          DI_LOAD_DT = currentTimestamp()) ~> derivedColumntitleAkas",
+				"derivedColumntitleAkas select(mapColumn(",
+				"          TITLEID = titleId,",
+				"          ORDERING = ordering,",
+				"          TITLE = title,",
+				"          REGION = region,",
+				"          LANUAGE = language,",
+				"          TYPES = types,",
+				"          ATTRIBUTES = attributes,",
+				"          ISORIGINALTITLE = isOriginalTitle,",
+				"          FILENAME = FileName,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DT",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> selecttitleAkas",
+				"selecttitleAkas sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          TITLEID as string,",
+				"          ORDERING as decimal(38,0),",
+				"          TITLE as string,",
+				"          REGION as string,",
+				"          LANGUAGE as string,",
+				"          TYPES as string,",
+				"          ATTRIBUTES as string,",
+				"          ISORIGINALTITLE as decimal(38,0),",
+				"          FILENAME as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DATE as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          TITLEID,",
+				"          ORDERING,",
+				"          TITLE,",
+				"          REGION,",
+				"          LANGUAGE = TYPES,",
+				"          TYPES,",
+				"          ATTRIBUTES,",
+				"          ISORIGINALTITLE,",
+				"          FILENAME,",
+				"          DI_JOB_ID,",
+				"          DI_LOAD_DATE = DI_LOAD_DT",
+				"     )) ~> sinktitleAkas"
+			]
+		}
+	}
+}
