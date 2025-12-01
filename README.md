@@ -54,6 +54,4 @@ Whether you're building a recommendation engine, studying film trends, or just c
 - Build predictive models on top of this cleaned dataset
 - Create visualization dashboards to surface insights
 
----
 
-**Questions? Ideas? Let's talk data.**
